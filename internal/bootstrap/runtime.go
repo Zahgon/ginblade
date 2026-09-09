@@ -3,8 +3,6 @@ package bootstrap
 import (
 	"fmt"
 
-	"github.com/gin-gonic/gin"
-
 	"github.com/arixbit/ginblade/config"
 	applog "github.com/arixbit/ginblade/pkg/log"
 )
@@ -15,7 +13,6 @@ func InitRuntime(cfg *config.Config, service ...string) error {
 		return fmt.Errorf("config is nil")
 	}
 
-	gin.SetMode(cfg.Server.GinMode)
 	serviceName := ""
 	if len(service) > 0 {
 		serviceName = service[0]

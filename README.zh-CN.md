@@ -49,7 +49,7 @@
 | 领域 | 选型 |
 |---|---|
 | 语言 / 工具链 | Go 1.25（toolchain go1.25.5，Go ≥ 1.21 支持自动工具链切换） |
-| Web 框架 | Gin v1.10 |
+| Web 框架 | Echo v4.15 |
 | ORM / 数据库 | GORM v1.30 + PostgreSQL（pgx v5） |
 | 异步任务 | Asynq v0.26（基于 Redis） |
 | 缓存 | go-redis v9 |
@@ -143,7 +143,7 @@ go run ./cmd/worker
 | 变量 | 必填 | 默认值 | 说明 |
 |---|---|---|---|
 | `SERVER_PORT` | 否 | `:3000` | HTTP 监听地址 |
-| `GIN_MODE` | 否 | `release` | Gin 运行模式 |
+| `SERVER_MODE` | 否 | `release` | 运行模式；`debug` 开启 Echo 调试模式 |
 | `REQUEST_TIMEOUT` | 否 | `30s` | 请求超时（context 截止时间） |
 | `TRUSTED_PROXIES` | 否 | 空 | 可信代理列表（逗号分隔） |
 | `POSTGRES` | API 必需 | 空 | PostgreSQL DSN（如 `postgres://user:pass@127.0.0.1:5432/app?sslmode=disable`） |

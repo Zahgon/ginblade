@@ -4,19 +4,20 @@ import (
 	"context"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 )
 
 // Timeout attaches a deadline to request contexts.
-func Timeout(timeout time.Duration) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if timeout <= 0 {
-			c.Next()
-			return
+func Timeout(timeout time.Duration) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			if timeout <= 0 {
+				return next(c)
+			}
+			ctx, cancel := context.WithTimeout(c.Request().Context(), timeout)
+			defer cancel()
+			c.SetRequest(c.Request().WithContext(ctx))
+			return next(c)
 		}
-		ctx, cancel := context.WithTimeout(c.Request.Context(), timeout)
-		defer cancel()
-		c.Request = c.Request.WithContext(ctx)
-		c.Next()
 	}
 }

@@ -8,19 +8,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 
 	"github.com/arixbit/ginblade/internal/errcode"
+	customvalidator "github.com/arixbit/ginblade/pkg/validator"
 )
 
-func init() {
-	gin.SetMode(gin.TestMode)
-}
-
-func newTestContext() (*gin.Context, *httptest.ResponseRecorder) {
+func newTestContext() (echo.Context, *httptest.ResponseRecorder) {
 	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	return c, w
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	return echo.New().NewContext(req, w), w
 }
 
 func TestSuccessResponse(t *testing.T) {
@@ -172,5 +169,37 @@ func TestJSONEnvelopeShape(t *testing.T) {
 		if !strings.Contains(raw, field) {
 			t.Errorf("envelope missing %s: %s", field, raw)
 		}
+	}
+}
+
+func TestBuildValidationErrorResponseFromValidationErrors(t *testing.T) {
+	c, _ := newTestContext()
+	err := customvalidator.New().Validate(struct {
+		Name string `validate:"required"`
+	}{})
+	if err == nil {
+		t.Fatal("expected a validation error")
+	}
+	if got := BuildValidationErrorResponse(c, err).Message; got != "name is required" {
+		t.Fatalf("Message = %q, want 'name is required'", got)
+	}
+}
+
+func TestBuildValidationErrorResponseFromHTTPError(t *testing.T) {
+	c, _ := newTestContext()
+
+	withInternal := echo.NewHTTPError(http.StatusBadRequest, "outer").SetInternal(errors.New("inner detail"))
+	if got := BuildValidationErrorResponse(c, withInternal).Message; got != "inner detail" {
+		t.Fatalf("Message = %q, want the internal error 'inner detail'", got)
+	}
+
+	messageOnly := echo.NewHTTPError(http.StatusUnsupportedMediaType, "Unsupported Media Type")
+	if got := BuildValidationErrorResponse(c, messageOnly).Message; got != "Unsupported Media Type" {
+		t.Fatalf("Message = %q, want 'Unsupported Media Type'", got)
+	}
+
+	nonString := echo.NewHTTPError(http.StatusBadRequest, map[string]string{"k": "v"})
+	if got := BuildValidationErrorResponse(c, nonString).Message; got != nonString.Error() {
+		t.Fatalf("Message = %q, want the error string fallback %q", got, nonString.Error())
 	}
 }

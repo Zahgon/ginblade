@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	"github.com/hibiken/asynq"
+	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 
 	"github.com/arixbit/ginblade/internal/errcode"
@@ -52,12 +52,14 @@ func (m *mockExampleQueue) Enqueue(ctx context.Context, t *asynq.Task, opts ...a
 	return m.enqueueFunc(ctx, t, opts...)
 }
 
-func setupRouter(repo service.ExampleRepository, queues ...service.ExampleQueue) *gin.Engine {
-	gin.SetMode(gin.TestMode)
-	r := gin.New()
-	r.Use(func(c *gin.Context) {
-		c.Set("trace_id", "test-trace")
-		c.Next()
+func setupRouter(repo service.ExampleRepository, queues ...service.ExampleQueue) *echo.Echo {
+	r := echo.New()
+	r.Validator = validator.New()
+	r.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			c.Set("trace_id", "test-trace")
+			return next(c)
+		}
 	})
 
 	svc := service.NewExampleService(repo, queues...)
@@ -200,5 +202,85 @@ func TestEnqueueExampleTaskSuccess(t *testing.T) {
 	}
 	if resp.Code != 0 {
 		t.Fatalf("expected code 0, got %d", resp.Code)
+	}
+}
+
+func TestCreateExampleBindsWithoutContentType(t *testing.T) {
+	repo := &mockExampleRepo{
+		createFunc: func(_ context.Context, example *model.Example) error {
+			example.ID = 1
+			return nil
+		},
+	}
+
+	for _, contentType := range []string{"", "application/json", "text/plain"} {
+		req := httptest.NewRequest(http.MethodPost, "/examples", strings.NewReader(`{"name":"test-example"}`))
+		if contentType != "" {
+			req.Header.Set("Content-Type", contentType)
+		}
+		w := httptest.NewRecorder()
+
+		setupRouter(repo).ServeHTTP(w, req)
+
+		var resp response.Response
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if resp.Code != 0 {
+			t.Errorf("Content-Type %q: code = %d (%s), want 0", contentType, resp.Code, resp.Message)
+		}
+	}
+}
+
+func TestCreateExampleEmptyBody(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/examples", nil)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	setupRouter(&mockExampleRepo{}).ServeHTTP(w, req)
+
+	var resp response.Response
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if resp.Code != errcode.InvalidParams.Code() {
+		t.Fatalf("code = %d, want %d", resp.Code, errcode.InvalidParams.Code())
+	}
+	if resp.Message != "EOF" {
+		t.Fatalf("message = %q, want the decode error EOF", resp.Message)
+	}
+}
+
+func TestCreateExampleMalformedJSON(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/examples", strings.NewReader(`{"name":`))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	setupRouter(&mockExampleRepo{}).ServeHTTP(w, req)
+
+	var resp response.Response
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if resp.Code != errcode.InvalidParams.Code() {
+		t.Fatalf("code = %d, want %d", resp.Code, errcode.InvalidParams.Code())
+	}
+}
+
+func TestListExamplesUnparsableQuery(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/examples?limit=abc", nil)
+	w := httptest.NewRecorder()
+
+	setupRouter(&mockExampleRepo{}).ServeHTTP(w, req)
+
+	var resp response.Response
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if resp.Code != errcode.InvalidParams.Code() {
+		t.Fatalf("code = %d, want %d", resp.Code, errcode.InvalidParams.Code())
+	}
+	if !strings.Contains(resp.Message, `parsing "abc"`) {
+		t.Fatalf("message = %q, want the underlying parse error", resp.Message)
 	}
 }

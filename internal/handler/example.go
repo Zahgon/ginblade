@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 
 	"github.com/arixbit/ginblade/internal/service"
 	"github.com/arixbit/ginblade/pkg/response"
@@ -18,52 +18,46 @@ func NewExampleHandler(svc *service.ExampleService) *ExampleHandler {
 }
 
 // Create handles POST /api/v1/examples.
-func (h *ExampleHandler) Create(c *gin.Context) {
+func (h *ExampleHandler) Create(c echo.Context) error {
 	var req service.CreateExampleReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.WriteValidationError(c, err)
-		return
+	if err := bindJSON(c, &req); err != nil {
+		return response.WriteValidationError(c, err)
 	}
 
-	example, err := h.svc.Create(c.Request.Context(), &req)
+	example, err := h.svc.Create(c.Request().Context(), &req)
 	if err != nil {
-		response.WriteError(c, err)
-		return
+		return response.WriteError(c, err)
 	}
 
-	response.WriteSuccess(c, example)
+	return response.WriteSuccess(c, example)
 }
 
 // List handles GET /api/v1/examples.
-func (h *ExampleHandler) List(c *gin.Context) {
+func (h *ExampleHandler) List(c echo.Context) error {
 	var req service.ListExamplesReq
-	if err := c.ShouldBindQuery(&req); err != nil {
-		response.WriteValidationError(c, err)
-		return
+	if err := bindQuery(c, &req); err != nil {
+		return response.WriteValidationError(c, err)
 	}
 
-	res, err := h.svc.List(c.Request.Context(), &req)
+	res, err := h.svc.List(c.Request().Context(), &req)
 	if err != nil {
-		response.WriteError(c, err)
-		return
+		return response.WriteError(c, err)
 	}
 
-	response.WriteSuccess(c, res)
+	return response.WriteSuccess(c, res)
 }
 
 // EnqueueTask handles POST /api/v1/examples/tasks.
-func (h *ExampleHandler) EnqueueTask(c *gin.Context) {
+func (h *ExampleHandler) EnqueueTask(c echo.Context) error {
 	var req service.EnqueueExampleTaskReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.WriteValidationError(c, err)
-		return
+	if err := bindJSON(c, &req); err != nil {
+		return response.WriteValidationError(c, err)
 	}
 
-	res, err := h.svc.EnqueueTask(c.Request.Context(), &req)
+	res, err := h.svc.EnqueueTask(c.Request().Context(), &req)
 	if err != nil {
-		response.WriteError(c, err)
-		return
+		return response.WriteError(c, err)
 	}
 
-	response.WriteSuccess(c, res)
+	return response.WriteSuccess(c, res)
 }

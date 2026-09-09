@@ -5,15 +5,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 )
 
 func TestCORSAllowsConfiguredOrigin(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	router := gin.New()
+	router := echo.New()
 	router.Use(CORS([]string{"https://app.example.com"}))
-	router.GET("/ping", func(c *gin.Context) {
-		c.Status(http.StatusOK)
+	router.GET("/ping", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/ping", nil)
@@ -31,11 +30,10 @@ func TestCORSAllowsConfiguredOrigin(t *testing.T) {
 }
 
 func TestCORSDoesNotAllowOriginsByDefault(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	router := gin.New()
+	router := echo.New()
 	router.Use(CORS(nil))
-	router.GET("/ping", func(c *gin.Context) {
-		c.Status(http.StatusOK)
+	router.GET("/ping", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/ping", nil)

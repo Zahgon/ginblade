@@ -16,7 +16,7 @@ type Config struct {
 // ServerConfig holds HTTP server settings.
 type ServerConfig struct {
 	Port           string
-	GinMode        string
+	Mode           string
 	TrustedProxies []string
 	RequestTimeout time.Duration
 }

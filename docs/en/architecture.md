@@ -23,7 +23,7 @@ picks this repository up as the starting point of a real service.
    configured, the corresponding routes are not registered, the health check
    reports `not_configured`, and the rest of the service keeps working.
 6. **Framework is an implementation detail.** Only the HTTP shell depends on
-   Gin. Everything below `handler` is plain Go, so the HTTP layer can be
+   Echo. Everything below `handler` is plain Go, so the HTTP layer can be
    swapped if the standard library (or another router) ever becomes a better
    fit.
 
@@ -38,7 +38,7 @@ picks this repository up as the starting point of a real service.
         ┌───────────────▼───┐   ┌──────▼───────┐  │
         │  cmd/api          │   │ cmd/worker   │  │
         │  HTTP server      │   │ Asynq worker │  │
-        │  (Gin)            │   │              │  │
+        │  (Echo)           │   │              │  │
         └───────────────┬───┘   └──────┬───────┘  │
                         │              │          │
                         ▼              ▼          ▼
@@ -65,7 +65,7 @@ config.LoadEnv → config.Load → bootstrap.InitRuntime → bootstrap.Init<Proc
 ## Layering
 
 ```
-HTTP shell (Gin-coupled)
+HTTP shell (Echo-coupled)
   handler      parse/validate request, call service, write response
   middleware   trace, recovery, timeout, CORS, auth, rate limit
   router       route registration (skips optional modules when unconfigured)
@@ -179,9 +179,9 @@ For an asynchronous feature, additionally:
    `RegisterHandlers`.
 9. `internal/service/` — enqueue the task (respect `queue.Available()`).
 
-## Framework Coupling (why swapping Gin is cheap)
+## Framework Coupling (why swapping Echo is cheap)
 
-The framework boundary is deliberate. These packages reference `gin`:
+The framework boundary is deliberate. These packages reference `echo`:
 
 ```
 internal/handler   internal/middleware   internal/router
@@ -197,9 +197,13 @@ internal/bootstrap
 pkg/auth  pkg/cache  pkg/database  pkg/log  pkg/validator
 ```
 
+`pkg/validator` is the one edge case: it imports no framework package, but its
+`Validator` type is shaped to satisfy `echo.Validator` so `Context#Validate`
+can call it.
+
 Business rules, persistence, task processing, and infrastructure helpers are
 framework-free. If the standard library router (Go 1.22+ `http.ServeMux`
 already supports method matching and path wildcards) or another framework
 ever becomes the better choice, migrating means rewriting the HTTP shell —
-handlers, middleware, router, and `pkg/response` — while the application core
-stays untouched.
+handlers, middleware, router, `pkg/response`, and the `pkg/validator` adapter —
+while the application core stays untouched.

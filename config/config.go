@@ -10,7 +10,7 @@ import (
 // Load reads all configuration from environment variables. Call after LoadEnv.
 func Load() *Config {
 	port := getEnvOrDefault("SERVER_PORT", ":3000")
-	ginMode := getEnvOrDefault("GIN_MODE", "release")
+	serverMode := getEnvOrDefault("SERVER_MODE", "release")
 	logLevel := getEnvOrDefault("LOG_LEVEL", "info")
 	logFormat := getEnvOrDefault("LOG_FORMAT", "json")
 	stacktraceLevel := getEnvOrDefault("LOG_STACKTRACE_LEVEL", "error")
@@ -18,7 +18,7 @@ func Load() *Config {
 	return &Config{
 		Server: ServerConfig{
 			Port:           port,
-			GinMode:        ginMode,
+			Mode:           serverMode,
 			TrustedProxies: parseCSV(os.Getenv("TRUSTED_PROXIES")),
 			RequestTimeout: durationEnv("REQUEST_TIMEOUT", 30*time.Second),
 		},

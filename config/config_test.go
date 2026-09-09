@@ -27,7 +27,7 @@ func clearEnv(t *testing.T, keys ...string) {
 }
 
 var allEnvKeys = []string{
-	"SERVER_PORT", "GIN_MODE", "TRUSTED_PROXIES", "REQUEST_TIMEOUT",
+	"SERVER_PORT", "SERVER_MODE", "TRUSTED_PROXIES", "REQUEST_TIMEOUT",
 	"POSTGRES", "GORM_LOG_LEVEL", "DB_MAX_IDLE_CONNS", "DB_MAX_OPEN_CONNS",
 	"DB_CONN_MAX_LIFETIME", "DB_CONN_MAX_IDLE_TIME",
 	"REDIS_ADDR", "REDIS_PASSWORD", "REDIS_CACHE_DB", "REDIS_QUEUE_DB",
@@ -46,8 +46,8 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.Server.Port != ":3000" {
 		t.Errorf("Port = %q, want :3000", cfg.Server.Port)
 	}
-	if cfg.Server.GinMode != "release" {
-		t.Errorf("GinMode = %q, want release", cfg.Server.GinMode)
+	if cfg.Server.Mode != "release" {
+		t.Errorf("Mode = %q, want release", cfg.Server.Mode)
 	}
 	if cfg.Server.RequestTimeout != 30*time.Second {
 		t.Errorf("RequestTimeout = %v, want 30s", cfg.Server.RequestTimeout)

@@ -1,7 +1,7 @@
 package router
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 
 	"github.com/arixbit/ginblade/internal/handler"
 )
@@ -9,18 +9,18 @@ import (
 // Dependencies collects handlers and middleware needed during route registration.
 type Dependencies struct {
 	Auth         *handler.AuthHandler
-	AuthRequired gin.HandlerFunc
+	AuthRequired echo.MiddlewareFunc
 	Example      *handler.ExampleHandler
 }
 
 // RegisterRoutes registers API routes under the given router group.
-func RegisterRoutes(r *gin.RouterGroup, deps Dependencies) error {
+func RegisterRoutes(r *echo.Group, deps Dependencies) error {
 	registerAuthRoutes(r, deps)
 	registerExampleRoutes(r, deps)
 	return nil
 }
 
-func registerAuthRoutes(r *gin.RouterGroup, deps Dependencies) {
+func registerAuthRoutes(r *echo.Group, deps Dependencies) {
 	if deps.Auth == nil {
 		return
 	}
@@ -28,11 +28,11 @@ func registerAuthRoutes(r *gin.RouterGroup, deps Dependencies) {
 	authRoutes := r.Group("/auth")
 	authRoutes.POST("/token", deps.Auth.CreateToken)
 	if deps.AuthRequired != nil {
-		authRoutes.GET("/me", deps.AuthRequired, deps.Auth.Me)
+		authRoutes.GET("/me", deps.Auth.Me, deps.AuthRequired)
 	}
 }
 
-func registerExampleRoutes(r *gin.RouterGroup, deps Dependencies) {
+func registerExampleRoutes(r *echo.Group, deps Dependencies) {
 	if deps.Example == nil {
 		return
 	}

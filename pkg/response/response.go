@@ -4,8 +4,8 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/labstack/echo/v4"
 
 	"github.com/arixbit/ginblade/internal/errcode"
 	customvalidator "github.com/arixbit/ginblade/pkg/validator"
@@ -26,7 +26,7 @@ func SuccessResponse(data any) Response {
 }
 
 // ErrorResponse creates an error response.
-func ErrorResponse(c *gin.Context, errorCode errcode.Error) Response {
+func ErrorResponse(c echo.Context, errorCode errcode.Error) Response {
 	reason := errorCode.Reason()
 	return Response{
 		Code:     errorCode.Code(),
@@ -37,37 +37,51 @@ func ErrorResponse(c *gin.Context, errorCode errcode.Error) Response {
 }
 
 // BuildValidationErrorResponse creates a validation error response.
-func BuildValidationErrorResponse(c *gin.Context, err error) Response {
-	msg := err.Error()
-	if errs, ok := err.(validator.ValidationErrors); ok {
-		msg = customvalidator.HandleValidatorError(errs)
-	}
+func BuildValidationErrorResponse(c echo.Context, err error) Response {
 	return Response{
 		Code:     errcode.InvalidParams.Code(),
 		Reason:   errcode.InvalidParams.Reason(),
-		Message:  msg,
+		Message:  validationMessage(err),
 		Metadata: buildMetadata(c),
 	}
 }
 
 // WriteSuccess writes a success response with HTTP 200.
-func WriteSuccess(c *gin.Context, data any) {
-	c.JSON(http.StatusOK, SuccessResponse(data))
+func WriteSuccess(c echo.Context, data any) error {
+	return c.JSON(http.StatusOK, SuccessResponse(data))
 }
 
 // WriteError translates an errcode.Error into the API error envelope.
-func WriteError(c *gin.Context, err error) {
+func WriteError(c echo.Context, err error) error {
 	var ec errcode.Error
 	if errors.As(err, &ec) {
-		c.JSON(http.StatusOK, ErrorResponse(c, ec))
-		return
+		return c.JSON(http.StatusOK, ErrorResponse(c, ec))
 	}
-	c.JSON(http.StatusOK, ErrorResponse(c, errcode.InternalError))
+	return c.JSON(http.StatusOK, ErrorResponse(c, errcode.InternalError))
 }
 
 // WriteValidationError writes a validation error response.
-func WriteValidationError(c *gin.Context, err error) {
-	c.JSON(http.StatusOK, BuildValidationErrorResponse(c, err))
+func WriteValidationError(c echo.Context, err error) error {
+	return c.JSON(http.StatusOK, BuildValidationErrorResponse(c, err))
+}
+
+// validationMessage extracts a client-facing message from a bind or validate error.
+func validationMessage(err error) string {
+	var errs validator.ValidationErrors
+	if errors.As(err, &errs) {
+		return customvalidator.HandleValidatorError(errs)
+	}
+
+	var httpErr *echo.HTTPError
+	if errors.As(err, &httpErr) {
+		if httpErr.Internal != nil {
+			return httpErr.Internal.Error()
+		}
+		if msg, ok := httpErr.Message.(string); ok {
+			return msg
+		}
+	}
+	return err.Error()
 }
 
 func messageFor(reason string) string {
@@ -93,8 +107,8 @@ func messageFor(reason string) string {
 	}
 }
 
-func buildMetadata(c *gin.Context) map[string]any {
-	if traceID := c.GetString("trace_id"); traceID != "" {
+func buildMetadata(c echo.Context) map[string]any {
+	if traceID, ok := c.Get("trace_id").(string); ok && traceID != "" {
 		return map[string]any{"trace_id": traceID}
 	}
 	return nil

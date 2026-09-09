@@ -27,7 +27,7 @@ GinBlade 不内置多语言。所有面向用户的文案都是英文硬编码�
 
 ### 1. 新增 `pkg/i18n` 包
 
-放翻译表与查找逻辑，纯函数、不依赖 gin，便于单测：
+放翻译表与查找逻辑，纯函数、不依赖 echo，便于单测：
 
 ```go
 package i18n
@@ -51,20 +51,22 @@ func (t *Translator) TranslateField(locale, field, tag, param string) string { /
 
 ### 2. 新增 `internal/middleware/locale.go`
 
-解析请求语言写入 `gin.Context`，与 `TraceLogger` 同范式：
+解析请求语言写入 `echo.Context`，与 `TraceLogger` 同范式：
 
 ```go
-func Locale(defaultLocale string) gin.HandlerFunc {
-    return func(c *gin.Context) {
-        loc := c.Query("lang") // 1. query（便于联调时手动切换）
-        if loc == "" {
-            loc = parseAcceptLanguage(c.GetHeader("Accept-Language"), defaultLocale) // 2. header
+func Locale(defaultLocale string) echo.MiddlewareFunc {
+    return func(next echo.HandlerFunc) echo.HandlerFunc {
+        return func(c echo.Context) error {
+            loc := c.QueryParam("lang") // 1. query（便于联调时手动切换）
+            if loc == "" {
+                loc = parseAcceptLanguage(c.Request().Header.Get("Accept-Language"), defaultLocale) // 2. header
+            }
+            if loc == "" {
+                loc = defaultLocale // 3. 兜底
+            }
+            c.Set("locale", loc)
+            return next(c)
         }
-        if loc == "" {
-            loc = defaultLocale // 3. 兜底
-        }
-        c.Set("locale", loc)
-        c.Next()
     }
 }
 ```
@@ -78,9 +80,8 @@ func Locale(defaultLocale string) gin.HandlerFunc {
 让 `messageFor` 从 context 取 locale，经 `Translator` 查文案：
 
 ```go
-func ErrorResponse(c *gin.Context, errorCode errcode.Error, tr *i18n.Translator) Response {
-    v, _ := c.Get("locale")
-    loc, _ := v.(string)
+func ErrorResponse(c echo.Context, errorCode errcode.Error, tr *i18n.Translator) Response {
+    loc, _ := c.Get("locale").(string)
     return Response{
         Code:     errorCode.Code(),
         Reason:   errorCode.Reason(), // 不变：语言无关契约

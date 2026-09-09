@@ -41,7 +41,7 @@ func NewExampleService(repo ExampleRepository, queue ...ExampleQueue) *ExampleSe
 
 // CreateExampleReq is the request body for creating an example.
 type CreateExampleReq struct {
-	Name string `json:"name" binding:"required"`
+	Name string `json:"name" validate:"required"`
 }
 
 // Create creates a new example.
@@ -56,7 +56,7 @@ func (s *ExampleService) Create(ctx context.Context, req *CreateExampleReq) (*mo
 
 // EnqueueExampleTaskReq is the request body for publishing an example task.
 type EnqueueExampleTaskReq struct {
-	Name string `json:"name" binding:"required"`
+	Name string `json:"name" validate:"required"`
 }
 
 // EnqueueExampleTaskRes is the response for publishing an example task.
@@ -84,8 +84,8 @@ func (s *ExampleService) EnqueueTask(ctx context.Context, req *EnqueueExampleTas
 
 // ListExamplesReq is the request query for listing examples.
 type ListExamplesReq struct {
-	Limit  int `form:"limit" binding:"omitempty,min=1,max=100"`
-	Offset int `form:"offset" binding:"omitempty,min=0"`
+	Limit  int `query:"limit" validate:"omitempty,min=1,max=100"`
+	Offset int `query:"offset" validate:"omitempty,min=0"`
 }
 
 // ListExamplesRes is the response for listing examples.

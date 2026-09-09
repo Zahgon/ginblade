@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 	"golang.org/x/time/rate"
 
 	"github.com/arixbit/ginblade/internal/errcode"
@@ -41,13 +41,14 @@ func NewIPRateLimiterPerMinute(requestsPerMinute int) *IPRateLimiter {
 }
 
 // Middleware blocks requests that exceed the configured per-IP limit.
-func (l *IPRateLimiter) Middleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if l == nil || l.allow(c.ClientIP()) {
-			c.Next()
-			return
+func (l *IPRateLimiter) Middleware() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			if l == nil || l.allow(c.RealIP()) {
+				return next(c)
+			}
+			return c.JSON(200, response.ErrorResponse(c, errcode.TooManyRequests))
 		}
-		c.AbortWithStatusJSON(200, response.ErrorResponse(c, errcode.TooManyRequests))
 	}
 }
 

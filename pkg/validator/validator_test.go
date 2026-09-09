@@ -68,3 +68,22 @@ func TestHandleValidatorErrorDefault(t *testing.T) {
 		t.Fatalf("default message = %q, want 'email is invalid'", got)
 	}
 }
+
+func TestValidatorValidate(t *testing.T) {
+	v := New()
+	if err := v.Validate(requiredStruct{Name: "set"}); err != nil {
+		t.Fatalf("Validate(valid) = %v, want nil", err)
+	}
+
+	err := v.Validate(requiredStruct{})
+	if err == nil {
+		t.Fatal("Validate(invalid) = nil, want error")
+	}
+	errs, ok := err.(validator.ValidationErrors)
+	if !ok {
+		t.Fatalf("Validate returned %T, want validator.ValidationErrors", err)
+	}
+	if got := HandleValidatorError(errs); got != "name is required" {
+		t.Fatalf("message = %q, want 'name is required'", got)
+	}
+}

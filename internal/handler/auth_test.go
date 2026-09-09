@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 
 	"github.com/arixbit/ginblade/pkg/auth"
 	"github.com/arixbit/ginblade/pkg/response"
@@ -26,8 +26,8 @@ func TestAuthHandlerCreateToken(t *testing.T) {
 		t.Fatalf("NewJWTManager: %v", err)
 	}
 
-	gin.SetMode(gin.TestMode)
-	router := gin.New()
+	router := echo.New()
+	router.Validator = validator.New()
 	router.POST("/auth/token", NewAuthHandler(manager).CreateToken)
 
 	req := httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(`{"subject":"subject-1"}`))

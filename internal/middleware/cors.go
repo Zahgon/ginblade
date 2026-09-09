@@ -4,11 +4,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 )
 
 // CORS returns a simple allow-list based CORS middleware.
-func CORS(allowOrigins []string) gin.HandlerFunc {
+func CORS(allowOrigins []string) echo.MiddlewareFunc {
 	allowed := make(map[string]struct{}, len(allowOrigins))
 	for _, origin := range allowOrigins {
 		origin = strings.TrimSpace(origin)
@@ -17,21 +17,25 @@ func CORS(allowOrigins []string) gin.HandlerFunc {
 		}
 	}
 
-	return func(c *gin.Context) {
-		origin := strings.TrimSpace(c.GetHeader("Origin"))
-		if origin != "" && containsOrigin(allowed, origin) {
-			c.Header("Access-Control-Allow-Origin", origin)
-			c.Header("Vary", "Origin")
-			c.Header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
-			c.Header("Access-Control-Allow-Headers", "Origin,Content-Type,Accept,Authorization,X-Request-ID")
-			c.Header("Access-Control-Allow-Credentials", "true")
-		}
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			req := c.Request()
+			header := c.Response().Header()
 
-		if c.Request.Method == http.MethodOptions {
-			c.AbortWithStatus(http.StatusNoContent)
-			return
+			origin := strings.TrimSpace(req.Header.Get("Origin"))
+			if origin != "" && containsOrigin(allowed, origin) {
+				header.Set("Access-Control-Allow-Origin", origin)
+				header.Set("Vary", "Origin")
+				header.Set("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS")
+				header.Set("Access-Control-Allow-Headers", "Origin,Content-Type,Accept,Authorization,X-Request-ID")
+				header.Set("Access-Control-Allow-Credentials", "true")
+			}
+
+			if req.Method == http.MethodOptions {
+				return c.NoContent(http.StatusNoContent)
+			}
+			return next(c)
 		}
-		c.Next()
 	}
 }
 

@@ -1,7 +1,9 @@
 package handler
 
 import (
-	"github.com/gin-gonic/gin"
+	"net/http"
+
+	"github.com/labstack/echo/v4"
 
 	"github.com/arixbit/ginblade/internal/errcode"
 	"github.com/arixbit/ginblade/internal/middleware"
@@ -24,7 +26,7 @@ func NewAuthHandler(manager *auth.JWTManager) *AuthHandler {
 
 // CreateTokenReq is the request body for issuing a sample JWT.
 type CreateTokenReq struct {
-	Subject string `json:"subject" binding:"required"`
+	Subject string `json:"subject" validate:"required"`
 }
 
 // CreateTokenRes is the response body for a sample JWT.
@@ -39,31 +41,28 @@ type MeRes struct {
 }
 
 // CreateToken issues a sample JWT for the given subject.
-func (h *AuthHandler) CreateToken(c *gin.Context) {
+func (h *AuthHandler) CreateToken(c echo.Context) error {
 	if h == nil || h.manager == nil {
-		response.WriteError(c, errcode.Unauthorized)
-		return
+		return response.WriteError(c, errcode.Unauthorized)
 	}
 
 	var req CreateTokenReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(200, response.BuildValidationErrorResponse(c, err))
-		return
+	if err := bindJSON(c, &req); err != nil {
+		return c.JSON(http.StatusOK, response.BuildValidationErrorResponse(c, err))
 	}
 
 	token, err := h.manager.GenerateToken(req.Subject)
 	if err != nil {
-		response.WriteError(c, errcode.InvalidParams)
-		return
+		return response.WriteError(c, errcode.InvalidParams)
 	}
 
-	response.WriteSuccess(c, CreateTokenRes{
+	return response.WriteSuccess(c, CreateTokenRes{
 		AccessToken: token,
 		TokenType:   "Bearer",
 	})
 }
 
 // Me returns the subject from a valid Bearer token.
-func (h *AuthHandler) Me(c *gin.Context) {
-	response.WriteSuccess(c, MeRes{Subject: middleware.AuthSubject(c)})
+func (h *AuthHandler) Me(c echo.Context) error {
+	return response.WriteSuccess(c, MeRes{Subject: middleware.AuthSubject(c)})
 }

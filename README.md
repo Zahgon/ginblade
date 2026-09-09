@@ -22,7 +22,7 @@ be verified from local development through CI.
 - Separate API, Asynq worker, and database migration processes.
 - `handler -> service -> repository` application flow with explicit boundaries.
 - Hand-written dependency injection and centralized resource lifecycle management.
-- Gin, GORM, PostgreSQL, optional Redis and JWT support, and asynchronous tasks.
+- Echo, GORM, PostgreSQL, optional Redis and JWT support, and asynchronous tasks.
 - Multi-stage, non-root container image and a complete local Docker Compose stack.
 - Unit, race, integration, lint, and container smoke verification in CI.
 

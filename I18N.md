@@ -39,7 +39,7 @@ The snippets below show the recommended shape, not complete drop-in code.
 ### 1. Add a `pkg/i18n` package
 
 Holds the translation table and lookup logic. Keep it a pure function with no
-`gin` dependency, so it is trivial to unit-test.
+`echo` dependency, so it is trivial to unit-test.
 
 ```go
 package i18n
@@ -67,21 +67,23 @@ need to maintain copy; the `Translator` interface stays the same.
 
 ### 2. Add `internal/middleware/locale.go`
 
-Resolve the request language and stash it on the `gin.Context`, mirroring
+Resolve the request language and stash it on the `echo.Context`, mirroring
 `TraceLogger`.
 
 ```go
-func Locale(defaultLocale string) gin.HandlerFunc {
-    return func(c *gin.Context) {
-        loc := c.Query("lang") // 1. query (easy to switch during debugging)
-        if loc == "" {
-            loc = parseAcceptLanguage(c.GetHeader("Accept-Language"), defaultLocale) // 2. header
+func Locale(defaultLocale string) echo.MiddlewareFunc {
+    return func(next echo.HandlerFunc) echo.HandlerFunc {
+        return func(c echo.Context) error {
+            loc := c.QueryParam("lang") // 1. query (easy to switch during debugging)
+            if loc == "" {
+                loc = parseAcceptLanguage(c.Request().Header.Get("Accept-Language"), defaultLocale) // 2. header
+            }
+            if loc == "" {
+                loc = defaultLocale // 3. fallback
+            }
+            c.Set("locale", loc)
+            return next(c)
         }
-        if loc == "" {
-            loc = defaultLocale // 3. fallback
-        }
-        c.Set("locale", loc)
-        c.Next()
     }
 }
 ```
@@ -101,9 +103,8 @@ Have `messageFor` read the locale from the context and look up copy through the
 `Translator`:
 
 ```go
-func ErrorResponse(c *gin.Context, errorCode errcode.Error, tr *i18n.Translator) Response {
-    v, _ := c.Get("locale")
-    loc, _ := v.(string)
+func ErrorResponse(c echo.Context, errorCode errcode.Error, tr *i18n.Translator) Response {
+    loc, _ := c.Get("locale").(string)
     return Response{
         Code:     errorCode.Code(),
         Reason:   errorCode.Reason(), // unchanged: language-neutral contract

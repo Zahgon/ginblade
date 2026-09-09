@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	"github.com/hibiken/asynq"
+	"github.com/labstack/echo/v4"
 
 	"github.com/arixbit/ginblade/internal/handler"
 	"github.com/arixbit/ginblade/internal/middleware"
@@ -13,10 +13,6 @@ import (
 	"github.com/arixbit/ginblade/internal/service"
 	"github.com/arixbit/ginblade/pkg/auth"
 )
-
-func init() {
-	gin.SetMode(gin.TestMode)
-}
 
 type mockExampleRepo struct{}
 
@@ -54,20 +50,20 @@ func newAuthHandler(t *testing.T) *auth.JWTManager {
 
 func routePaths(t *testing.T, deps Dependencies) map[string]string {
 	t.Helper()
-	engine := gin.New()
+	engine := echo.New()
 	api := engine.Group("/api/v1")
 	if err := RegisterRoutes(api, deps); err != nil {
 		t.Fatalf("RegisterRoutes: %v", err)
 	}
 	paths := make(map[string]string)
 	for _, r := range engine.Routes() {
-		paths[r.Method+" "+r.Path] = r.Handler
+		paths[r.Method+" "+r.Path] = r.Name
 	}
 	return paths
 }
 
 func TestRegisterRoutesNilDeps(t *testing.T) {
-	engine := gin.New()
+	engine := echo.New()
 	api := engine.Group("/api/v1")
 	if err := RegisterRoutes(api, Dependencies{}); err != nil {
 		t.Fatalf("RegisterRoutes with nil deps: %v", err)

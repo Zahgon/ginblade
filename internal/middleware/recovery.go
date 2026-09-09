@@ -3,7 +3,7 @@ package middleware
 import (
 	"runtime/debug"
 
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 
 	"github.com/arixbit/ginblade/internal/errcode"
@@ -12,19 +12,22 @@ import (
 )
 
 // Recovery catches panics and returns the standard API error envelope.
-func Recovery() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		defer func() {
-			if err := recover(); err != nil {
-				applog.FromContext(c.Request.Context()).Error("panic recovered",
-					zap.String("method", c.Request.Method),
-					zap.String("path", c.Request.URL.Path),
-					zap.Any("error", err),
-					zap.ByteString("stacktrace", debug.Stack()),
-				)
-				c.AbortWithStatusJSON(200, response.ErrorResponse(c, errcode.InternalError))
-			}
-		}()
-		c.Next()
+func Recovery() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) (err error) {
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					req := c.Request()
+					applog.FromContext(req.Context()).Error("panic recovered",
+						zap.String("method", req.Method),
+						zap.String("path", req.URL.Path),
+						zap.Any("error", recovered),
+						zap.ByteString("stacktrace", debug.Stack()),
+					)
+					err = c.JSON(200, response.ErrorResponse(c, errcode.InternalError))
+				}
+			}()
+			return next(c)
+		}
 	}
 }

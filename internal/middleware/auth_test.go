@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 
 	"github.com/arixbit/ginblade/internal/errcode"
 	"github.com/arixbit/ginblade/pkg/auth"
@@ -28,11 +28,10 @@ func TestBearerAuthAcceptsValidToken(t *testing.T) {
 		t.Fatalf("GenerateToken: %v", err)
 	}
 
-	gin.SetMode(gin.TestMode)
-	router := gin.New()
-	router.GET("/me", BearerAuth(manager), func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"subject": AuthSubject(c)})
-	})
+	router := echo.New()
+	router.GET("/me", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, map[string]any{"subject": AuthSubject(c)})
+	}, BearerAuth(manager))
 
 	req := httptest.NewRequest(http.MethodGet, "/me", nil)
 	req.Header.Set("Authorization", "Bearer "+token)
@@ -60,11 +59,10 @@ func TestBearerAuthRejectsMissingToken(t *testing.T) {
 		t.Fatalf("NewJWTManager: %v", err)
 	}
 
-	gin.SetMode(gin.TestMode)
-	router := gin.New()
-	router.GET("/me", BearerAuth(manager), func(c *gin.Context) {
-		c.Status(http.StatusOK)
-	})
+	router := echo.New()
+	router.GET("/me", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	}, BearerAuth(manager))
 
 	req := httptest.NewRequest(http.MethodGet, "/me", nil)
 	rec := httptest.NewRecorder()

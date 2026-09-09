@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/labstack/echo/v4"
 
 	"github.com/arixbit/ginblade/pkg/cache"
 	"github.com/arixbit/ginblade/pkg/database"
@@ -23,8 +23,8 @@ func NewHealthHandler(db *database.DBManager, cache *cache.Client) *HealthHandle
 }
 
 // Health returns database and cache health status.
-func (h *HealthHandler) Health(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+func (h *HealthHandler) Health(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(c.Request().Context(), 2*time.Second)
 	defer cancel()
 
 	checks := map[string]string{}
@@ -50,14 +50,13 @@ func (h *HealthHandler) Health(c *gin.Context) {
 	}
 
 	if !healthy {
-		c.JSON(http.StatusServiceUnavailable, gin.H{
+		return c.JSON(http.StatusServiceUnavailable, map[string]any{
 			"status": "unhealthy",
 			"checks": checks,
 		})
-		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	return c.JSON(http.StatusOK, map[string]any{
 		"status": "ok",
 		"checks": checks,
 	})

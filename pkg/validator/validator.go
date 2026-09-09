@@ -7,8 +7,24 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
+// validate is the process-wide validator instance used by the HTTP layer.
+var validate = validator.New()
+
 // InitValidator is the hook for registering custom validation rules.
 func InitValidator() {
+}
+
+// Validator adapts the package validator to the echo.Validator interface.
+type Validator struct{}
+
+// New returns the request validator used by the HTTP layer.
+func New() *Validator {
+	return &Validator{}
+}
+
+// Validate validates the given struct and returns the raw validator error.
+func (*Validator) Validate(i any) error {
+	return validate.Struct(i)
 }
 
 // HandleValidatorError converts validation errors into a concise client message.

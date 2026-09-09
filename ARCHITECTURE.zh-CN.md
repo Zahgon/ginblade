@@ -9,7 +9,7 @@
 3. **手写依赖注入。** 不使用 DI 框架。资源在 `bootstrap` 中组装，以结构体显式向下传递。依赖图在一处可见，无魔法。
 4. **集中式生命周期。** 所有共享资源（DB 连接池、Redis 客户端、队列客户端）由 `bootstrap.Registry` 持有，关闭时统一释放。
 5. **基础设施可选。** Redis 与 JWT 均为可选。未配置时，对应路由不注册、健康检查如实上报 `not_configured`，其余功能正常。
-6. **框架是实现细节。** 只有 HTTP 壳层依赖 Gin，`handler` 以下全部是纯 Go。若标准库（或其他路由框架）未来更合适，HTTP 层可整体替换。
+6. **框架是实现细节。** 只有 HTTP 壳层依赖 Echo，`handler` 以下全部是纯 Go。若标准库（或其他路由框架）未来更合适，HTTP 层可整体替换。
 
 ## 进程模型
 
@@ -22,7 +22,7 @@
         ┌───────────────▼───┐   ┌──────▼───────┐  │
         │  cmd/api          │   │ cmd/worker   │  │
         │  HTTP server      │   │ Asynq worker │  │
-        │  (Gin)            │   │              │  │
+        │  (Echo)           │   │              │  │
         └───────────────┬───┘   └──────┬───────┘  │
                         │              │          │
                         ▼              ▼          ▼
@@ -47,7 +47,7 @@ config.LoadEnv → config.Load → bootstrap.InitRuntime → bootstrap.Init<进�
 ## 分层结构
 
 ```
-HTTP 壳层（耦合 Gin）
+HTTP 壳层（耦合 Echo）
   handler      解析/校验请求、调用 service、写响应
   middleware   链路追踪、恢复、超时、CORS、认证、限流
   router       路由注册（未配置的可选模块自动跳过）
@@ -134,9 +134,9 @@ router → handler → service → repository → Postgres
 8. `internal/worker/handler.go` — 处理器；在 `RegisterHandlers` 中注册。
 9. `internal/service/` — 发布任务（尊重 `queue.Available()`）。
 
-## 框架耦合面（为什么换掉 Gin 成本很低）
+## 框架耦合面（为什么换掉 Echo 成本很低）
 
-框架边界是刻意设计的。以下包引用 `gin`：
+框架边界是刻意设计的。以下包引用 `echo`：
 
 ```
 internal/handler   internal/middleware   internal/router
@@ -152,4 +152,6 @@ internal/bootstrap
 pkg/auth  pkg/cache  pkg/database  pkg/log  pkg/validator
 ```
 
-业务规则、持久化、任务处理与基础设施助手均与框架无关。若标准库路由（Go 1.22+ 的 `http.ServeMux` 已支持方法匹配与路径通配符）或其他框架成为更优选择，迁移只需重写 HTTP 壳层——handler、middleware、router 与 `pkg/response`——应用核心保持不变。
+`pkg/validator` 是唯一的边界情况：它不导入任何框架包，但其 `Validator` 类型按 `echo.Validator` 的形状实现，供 `Context#Validate` 调用。
+
+业务规则、持久化、任务处理与基础设施助手均与框架无关。若标准库路由（Go 1.22+ 的 `http.ServeMux` 已支持方法匹配与路径通配符）或其他框架成为更优选择，迁移只需重写 HTTP 壳层——handler、middleware、router、`pkg/response` 与 `pkg/validator` 适配层——应用核心保持不变。
